@@ -1,0 +1,7 @@
+# Add runtime dependencies here
+numpy>=1.25
+pandas
+# For experimentation — uncomment if needed
+# torch
+# transformers
+pytest
