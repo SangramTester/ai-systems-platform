@@ -5,5 +5,6 @@ pandas
 torch
 torchvision
 pytorch-lightning
+matplotlib
 # transformers
 pytest

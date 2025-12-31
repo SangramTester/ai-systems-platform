@@ -1,4 +1,3 @@
-from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 import torch
 import torchvision
 from torch.utils.data import Dataset, DataLoader
