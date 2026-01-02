@@ -205,3 +205,26 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Machine Learning / AI
+# Datasets
+data/
+
+# Model files
+*.pt
+*.pth
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.ckpt
+*.pb
+*.onnx
+
+# IDE and Editor
+.vscode/
+.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
