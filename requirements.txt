@@ -6,5 +6,6 @@ torch
 torchvision
 pytorch-lightning
 matplotlib
+scipy
 # transformers
 pytest
