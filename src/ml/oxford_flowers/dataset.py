@@ -2,7 +2,6 @@ import os
 from PIL import Image
 import scipy.io
 from torch.utils.data import Dataset
-import time
 
 class OxfordFlowersDataSet(Dataset):
   def __init__(self, data_dir: str, transform=None):
@@ -21,30 +20,17 @@ class OxfordFlowersDataSet(Dataset):
     return len(self.labels)
   
   def __getitem__(self, idx):
-    start_time = time.time()
-    for _ in range(len(self)):
-      try:
-        img_name = os.path.join(self.img_dir, f"image_{idx+1:05d}.jpg")
-        image = Image.open(img_name).convert("RGB")
-        label = self.labels[idx]
-        image.verify()
-        image = Image.open(img_name).convert("RGB")
+    try:
+      img_name = os.path.join(self.img_dir, f"image_{idx+1:05d}.jpg")
+      image = Image.open(img_name).convert("RGB")
+      label = self.labels[idx]
 
-        if image.size[0] < 32 or image.size[1] < 32:
-          raise ValueError(f"Image at index {idx} is smaller than 32x32 pixels. {image.size}")
+      if image.size[0] < 32 or image.size[1] < 32:
+        raise ValueError(f"Image at index {idx} is smaller than 32x32 pixels. {image.size}")
 
-        if self.transform:
-          image = self.transform(image)
-        return image, label
-      except Exception as e:
-        self.error_log.append((idx, str(e)))
-        print(f"Error loading image at index {idx}: {e}")
-        idx = (idx + 1) % len(self)
-    raise RuntimeError("All images failed to load.")
+      if self.transform:
+        image = self.transform(image)
+      return image, label
+    except Exception as e:
+      print(f"Error loading image at index {idx}: {e}")
   
-
-  def get_error_summary(self):
-    for error in self.error_log[:5]:
-      print(f"Index: {error[0]}, Error: {error[1]}")
-    if len(self.error_log) > 5:
-      print(f"... and {len(self.error_log) - 5} more errors.")
