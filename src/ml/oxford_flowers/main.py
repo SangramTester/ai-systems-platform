@@ -1,8 +1,12 @@
 
 import torch
-import torchvision
 from datamodule import OxfordFlowersDataModule
 from model import OxfordFlowersNet
+from datetime import datetime
+import csv
+import matplotlib.pyplot as plt
+from pathlib import Path
+import json
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device):
     model.train()
@@ -69,30 +73,102 @@ def main():
     val_dataloader = datamodule.val_dataloader()
     test_dataloader = datamodule.test_dataloader()
 
-
-    # for images, labels in train_dataloader:
-    #   print(f"First batch shape: {images.shape}")
-    #   print(f"Pixel range: min={images.min():.2f}, max={images.max():.2f}")
-
-    #   # Save first image to check augmentation
-    #   torchvision.utils.save_image(images[0], "augmented_sample.png")
-    #   print("Saved augmented_sample.png - check if it looks varied!")
-    #   break
-
-
     model = OxfordFlowersNet().to(device)
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     assert train_dataloader is not None, "Train dataloader is None. Ensure that setup() has been called properly."
 
-    for epoch in range(epochs):
-        train_loss, train_accuracy = train_one_epoch(model, train_dataloader, criterion, optimizer, device)
-        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}")
+    # Lists to store metrics
+    history = {
+        'epoch': [],
+        'train_loss': [],
+        'train_acc': [],
+        'val_loss': [],
+        'val_acc': [],
+        'lr': []
+    }
 
-        val_loss, val_accuracy = evaluate(model, val_dataloader, criterion, device)
-        print(f"Epoch {epoch+1}/{epochs}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    run_dir = Path("runs") / f"oxford_{timestamp}"
+    run_dir.mkdir(parents=True, exist_ok=True)
 
-    torch.save(model.state_dict(), "./oxford_model.pt")
+    log_filename = run_dir / "metrics.csv"
+    ckpt_filename = run_dir / "best_model.pt"
+
+
+    # save config
+    (run_dir / "config.json").write_text(json.dumps({
+        "batch_size": batch_size,
+        "epochs": epochs,
+        "lr": 0.001,
+    }, indent=2))
+
+    # Create log file with timestamp
+    best_val_accuracy = 0
+    
+    with open(log_filename, "w", newline='') as f:
+      writer = csv.writer(f)
+      writer.writerow(["epoch", "train_loss", "train_acc", "val_loss", "val_acc", "lr"])
+
+      for epoch in range(epochs):
+          train_loss, train_accuracy = train_one_epoch(model, train_dataloader, criterion, optimizer, device)
+          val_loss, val_accuracy = evaluate(model, val_dataloader, criterion, device)
+          current_lr = optimizer.param_groups[0]['lr']
+          
+          # Store in memory
+          history['epoch'].append(epoch + 1)
+          history['train_loss'].append(train_loss)
+          history['train_acc'].append(train_accuracy)
+          history['val_loss'].append(val_loss)
+          history['val_acc'].append(val_accuracy)
+          history['lr'].append(current_lr)
+
+          # Log to CSV
+          writer.writerow([epoch+1, train_loss, train_accuracy, val_loss, val_accuracy, current_lr])
+          f.flush()
+
+          if val_accuracy > best_val_accuracy:
+            best_val_accuracy = val_accuracy
+            torch.save(model.state_dict(), ckpt_filename)
+          
+          # Print
+          print(f"Epoch {epoch+1}/{epochs}")
+          print(f"  Train - Loss: {train_loss:.4f}, Acc: {train_accuracy:.4f}")
+          print(f"  Val   - Loss: {val_loss:.4f}, Acc: {val_accuracy:.4f}")
+          print(f"  LR: {current_lr:.6f}, Best Val: {best_val_accuracy:.4f}")
+
+    # Final plot
+    plot_training_curves(run_dir, history)
+
+    print(f"\nTraining complete! Logs saved to {log_filename}")
+    print(f"Best validation accuracy: {best_val_accuracy:.4f}")
+
+def plot_training_curves(run_dir, history):
+    """Generate training curves"""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+    # Loss plot
+    ax1.plot(history['epoch'], history['train_loss'], label='Train Loss', marker='o')
+    ax1.plot(history['epoch'], history['val_loss'], label='Val Loss', marker='s')
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Loss')
+    ax1.set_title('Training and Validation Loss')
+    ax1.legend()
+    ax1.grid(True)
+
+    # Accuracy plot
+    ax2.plot(history['epoch'], history['train_acc'], label='Train Acc', marker='o')
+    ax2.plot(history['epoch'], history['val_acc'], label='Val Acc', marker='s')
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Accuracy')
+    ax2.set_title('Training and Validation Accuracy')
+    ax2.legend()
+    ax2.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(f"{run_dir}/training_curves.png", dpi=150)
+    plt.close()
+    print("  Saved training curves to training_curves.png")
 
 
 if __name__ == "__main__":
