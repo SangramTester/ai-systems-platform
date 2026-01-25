@@ -7,5 +7,10 @@ torchvision
 pytorch-lightning
 matplotlib
 scipy
-# transformers
+transformers
 pytest
+datasets
+accelerate
+evaluate
+huggingface-hub
+tokenizers

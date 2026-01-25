@@ -223,7 +223,7 @@ data/
 
 # IDE and Editor
 .vscode/
-.code-workspace
+*.code-workspace
 
 # test runs
 runs/
